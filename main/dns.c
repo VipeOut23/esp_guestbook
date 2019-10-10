@@ -98,8 +98,8 @@ dns_parse_questions(char *data, uint16 len)
 
                 if(len < 4)
                 { dns_error = DNSE_PACKET_TOO_SMALL ; return true; }
-                questions[q_idx].type  = ntohs( data[0] );
-                questions[q_idx].class = ntohs( data[2] );
+                questions[q_idx].type  = ntohs( *((uint16*)data)   );
+                questions[q_idx].class = ntohs( *((uint16*)data+2) );
                 data += 4;
 
                 q_idx++;
@@ -191,15 +191,10 @@ dns_parse(char *data, uint16 len)
         header[1] = *dptr++;
 
         /* Read counts */
-        // TODO: do this properly
-        qdcount = dptr[1];
-        qdcount |= dptr[0]<<8;
-        ancount = dptr[3];
-        ancount |= dptr[2]<<8;
-        nscount = dptr[5];
-        nscount |= dptr[4]<<8;
-        arcount = dptr[7];
-        arcount |= dptr[6]<<8;
+        qdcount = ntohs( *((uint16*)dptr)   );
+        ancount = ntohs( *((uint16*)dptr+2) );
+        nscount = ntohs( *((uint16*)dptr+4) );
+        arcount = ntohs( *((uint16*)dptr+6) );
         dptr += 8;
 
         err = dns_check_header();

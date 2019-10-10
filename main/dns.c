@@ -36,6 +36,7 @@ static uint8 dns_resp_buf[MAX_RESPONSE_SIZE];
 
 enum dns_error dns_error;
 struct resource_record *dns_records;
+uint16 dns_record_count;
 
 
 /**

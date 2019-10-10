@@ -7,7 +7,7 @@
 #define MAX_NAME_LABEL    6
 #define MAX_NAME_LEN      255
 #define MAX_QUESTION_LEN  MAX_NAME_LEN+4
-#define MAX_RESPONSE_SIZE 512  // Must be over 6 (for responses without records)
+#define MAX_RESPONSE_SIZE 512  // Must be over 6 (minimum for responses without records)
 #define MAX_RDATA_LENGTH  255
 
 /* Rcodes */

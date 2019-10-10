@@ -6,6 +6,7 @@
 #include "espconn.h"
 
 #include "config.h"
+#include "dns.h"
 
 #define MESSAGE_QUEUE_LEN 1
 os_event_t message_queue[MESSAGE_QUEUE_LEN];
@@ -47,7 +48,8 @@ user_spi_flash_dio_to_qio_pre_init(void)
 void ICACHE_FLASH_ATTR
 user_dns_rcv(void *arg, char *pdata, uint16 len)
 {
-
+        dns_parse(pdata, len);
+        dns_dump();
 }
 
 static esp_udp dns_udp;

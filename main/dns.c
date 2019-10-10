@@ -12,13 +12,17 @@
 #include "lwip/def.h"
 
 /* OpCodes */
-#define IS_REPLY   !(header[0] & 0b00000001)
-#define IS_QUERY  ((header[0] & 0b00011110) == 0b10)
-#define IS_STATUS ((header[0] & 0b00011110) == 0b100)
-#define IS_NOTIFY ((header[0] & 0b00011110) == 0b1000)
-#define IS_UPDATE ((header[0] & 0b00011110) == 0b1010)
+#define IS_REPLY             !(header[0] & 0b00000001)
+#define IS_QUERY             ((header[0] & 0b00011110) == 0b10)
+#define IS_STATUS            ((header[0] & 0b00011110) == 0b100)
+#define IS_NOTIFY            ((header[0] & 0b00011110) == 0b1000)
+#define IS_UPDATE            ((header[0] & 0b00011110) == 0b1010)
 /* Flags */
-#define IS_TRUNC  ((header[0] & 0b01000000))
+#define IS_TRUNC             ((header[0] & 0b01000000))
+#define SET_QR(header, val)  (header[0] |= (val & 0b000000001))
+/* Rcode */
+#define SET_RCODE(header,val) header[1] &= 0b11110000; header[1] |= (val<<4)
+
 
 
 /* Packet content */
@@ -33,6 +37,7 @@ static struct question questions[MAX_QUESTIONS];
 
 static struct resource_record *answer_records[MAX_QUESTIONS];
 static uint8 dns_resp_buf[MAX_RESPONSE_SIZE];
+static uint16 written;
 
 enum dns_error dns_error;
 struct resource_record *dns_records;
@@ -231,4 +236,117 @@ dns_parse(char *data, uint16 len)
         err = dns_parse_questions(dptr, len-(dptr-data));
 
         return err;
+}
+
+static bool ICACHE_FLASH_ATTR
+dns_write_answers()
+{
+        uint8 *head = dns_resp_buf+written;
+
+        for(int i = 0; i < qdcount; ++i) {
+                if(written+answer_records[i]->namelen > MAX_RESPONSE_SIZE)
+                { dns_error = DNSE_RESP_BUF_FULL; return true; }
+
+                /* First write name field */
+                os_strncpy((char*)head, answer_records[i]->name, answer_records[i]->namelen);
+                head    += answer_records[i]->namelen;
+                written += answer_records[i]->namelen;
+
+                /* Reserve static size (type, class, ttl, rdlength) */
+                if(written+12 > MAX_RESPONSE_SIZE)
+                { dns_error = DNSE_RESP_BUF_FULL; return true; }
+
+                /* Copy type and class */
+                *((uint16*)head)   = htons( answer_records[i]->type );
+                *((uint16*)head+2) = htons( answer_records[i]->class );
+
+                /* 0 TTL (only vaild for this request) */
+                head[4] = 0; head[5] = 0; head[6] = 0; head[7] = 0;
+
+                /* rdlength */
+                *((uint32*)head+8) = htonl( answer_records[i]->rdlength );
+
+                written += 12;
+                head    += 12;
+
+                /* rdata */
+                os_memcpy(head, answer_records[i]->rdata, answer_records[i]->rdlength);
+
+                written += answer_records[i]->rdlength;
+                head    += answer_records[i]->rdlength;
+
+        }
+}
+
+bool ICACHE_FLASH_ATTR
+dns_write_response(uint8 **buf, uint16 *len)
+{
+        bool   err;
+        uint8  *head   = dns_resp_buf;
+
+        if( 12 > MAX_RESPONSE_SIZE )
+        { dns_error = DNSE_RESP_BUF_FULL; return true; }
+
+        /* Copy id */
+        head[0] = id[0];
+        head[1] = id[1];
+        head += 2;
+
+        /* Write header */
+        head[0] = head[1] = 0;
+        SET_QR(head, 1);
+
+        /* Response code */
+        switch(dns_error) {
+        case DNSE_OK:
+                SET_RCODE(head, RC_NoError); break;
+        case DNSE_ERROR:
+                SET_RCODE(head, RC_ServFail); break;
+        case DNSE_PACKET_TOO_SMALL:
+                SET_RCODE(head, RC_BADTRUC); break;
+        case DNSE_LABEL_LEN_OVERFLOW:
+                SET_RCODE(head, RC_ServFail); break;
+        case DNSE_NAME_LEN_OVERFLOW:
+                SET_RCODE(head, RC_ServFail); break;
+        case DNSE_UNIMPLEMENTED:
+                SET_RCODE(head, RC_NotImp); break;
+        default:
+                SET_RCODE(head, RC_ServFail); break;
+        }
+        head += 2;
+
+        /* Counter */
+        head[0] = 0;               // qdcount
+        head[1] = 0;               // qdcount
+        head[3] =  qdcount & 0xFF; // ancount ( answer for each question )
+        head[2] |= qdcount << 8;   // ancount
+        head[4] = 0;               // nscount
+        head[5] = 0;               // nscount
+        head[6] = 0;               // arcount
+        head[7] = 0;               // arcount
+
+        written = 12;
+
+        /* Only write header and counter on error */
+        if(dns_error != DNSE_OK) {
+                /* Set answer count to 0 */
+                head[2] = 0;
+                head[3] = 0;
+
+                *buf = dns_resp_buf;
+                *len = written;
+                return false;
+        }
+
+        head += 8;
+
+        err = dns_write_answers();
+        if(err) return err;
+
+        *buf = dns_resp_buf;
+        *len = written;
+
+        //TODO: Return code for one or multiple names not found
+
+        return false;;
 }

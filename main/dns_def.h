@@ -42,6 +42,7 @@ struct question {
 
 struct resource_record {
         char   name[MAX_NAME_LEN+MAX_NAME_LABEL];  // Respect lenth bytes
+        uint16 namelen;  // Must include \0
         uint16 type;
         uint16 class;
         uint32 ttl;

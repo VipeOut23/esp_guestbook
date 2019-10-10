@@ -11,7 +11,8 @@ enum dns_error {
         DNSE_LABEL_LEN_OVERFLOW,
         DNSE_NAME_LEN_OVERFLOW,
         DNSE_PACKET_TOO_SMALL,
-        DNSE_UNIMPLEMENTED
+        DNSE_UNIMPLEMENTED,
+        DNSE_RESP_BUF_FULL
 };
 
 /**
@@ -31,5 +32,6 @@ extern uint16 dns_record_count;
 bool ICACHE_FLASH_ATTR dns_parse(char *data, uint16 len);
 void ICACHE_FLASH_ATTR dns_dump();
 char* ICACHE_FLASH_ATTR dns_errstr();
+bool ICACHE_FLASH_ATTR dns_write_response(uint8 **buf, uint16 *len);
 
 #endif // __DNS_H

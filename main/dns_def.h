@@ -33,7 +33,7 @@
 
 
 struct question {
-        char   name[255+MAX_NAME_LABEL];  // Respect lenth bytes
+        char   name[MAX_NAME_LEN+MAX_NAME_LABEL];  // Respect lenth bytes
         char   *labels[MAX_NAME_LABEL];
         uint8  n_label;
         uint16 type;
@@ -41,7 +41,7 @@ struct question {
 };
 
 struct resource_record {
-        char   name[255+MAX_NAME_LABEL];  // Respect lenth bytes
+        char   name[MAX_NAME_LEN+MAX_NAME_LABEL];  // Respect lenth bytes
         uint16 type;
         uint16 class;
         uint32 ttl;

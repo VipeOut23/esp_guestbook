@@ -60,6 +60,7 @@ dns_parse_labels(char *data, uint16 len, struct question *q)
         for(;;) {
                 /* Read and check label len */
                 cur_len = *data++;
+                q->name[n_idx++] = cur_len;
                 if(cur_len > len)
                 { dns_error = DNSE_LABEL_LEN_OVERFLOW; return NULL; }
                 if(cur_len+n_idx > MAX_NAME_LEN)
@@ -72,7 +73,6 @@ dns_parse_labels(char *data, uint16 len, struct question *q)
                 while(cur_len--) {
                         q->name[n_idx++] = *data++;
                 }
-                q->name[n_idx++] = '\0';
         }
 }
 

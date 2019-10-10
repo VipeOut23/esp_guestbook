@@ -31,7 +31,7 @@ static uint16 arcount;
 static struct question questions[MAX_QUESTIONS];
 
 
-static struct resource_record *answer_record;
+static struct resource_record *answer_records[MAX_QUESTIONS];
 static uint8 dns_resp_buf[MAX_RESPONSE_SIZE];
 
 enum dns_error dns_error;
@@ -172,7 +172,7 @@ dns_errstr()
 }
 
 void ICACHE_FLASH_ATTR
-dns_find_resource(char *name)
+dns_find_resource(char *name, struct resource_record **r)
 {
         struct resource_record *catchall = NULL;
 
@@ -182,13 +182,13 @@ dns_find_resource(char *name)
                         catchall = &dns_records[i];
                 if( !os_strncmp(name, dns_records[i].name, MAX_NAME_LEN) ) {
                         /* Found matching record */
-                        answer_record = &dns_records[i];
+                        *r = &dns_records[i];
                         return;
                 }
         }
 
         if( catchall ) {
-                answer_record = catchall;
+                *r = catchall;
         }
 }
 

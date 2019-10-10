@@ -47,6 +47,7 @@ struct resource_record {
         uint32 ttl;
         uint16 rdlength;
         char   rdata[MAX_RDATA_LENGTH];
+        bool   catchall;
 };
 
 #endif // __DNS_DEF_H_

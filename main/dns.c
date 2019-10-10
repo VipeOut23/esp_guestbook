@@ -98,8 +98,10 @@ dns_parse_questions(char *data, uint16 len)
 
                 if(len < 4)
                 { dns_error = DNSE_PACKET_TOO_SMALL ; return true; }
-                questions[q_idx].type  = ntohs( *((uint16*)data)   );
-                questions[q_idx].class = ntohs( *((uint16*)data+2) );
+                //questions[q_idx].type  = ntohs( *((uint16*)data)   );
+                //questions[q_idx].class = ntohs( *((uint16*)data+2) );
+                questions[q_idx].type  = ntohs( data[0] );
+                questions[q_idx].class = ntohs( data[3] );
                 data += 4;
 
                 q_idx++;

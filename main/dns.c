@@ -64,6 +64,16 @@ dns_dump()
         }
 
         os_printf("-----------------\n");
+        os_printf("----Answers----\n");
+
+        for(int i = 0; i < ancount; ++i) {
+                os_printf("RData: ");
+                for(int x = 0; x < answer_records[i]->rdlength; x++) {
+                        os_printf("%02X", answer_records[i]->rdata[x]);
+                }
+        }
+
+        os_printf("\n-----------------\n");
 }
 
 /**
@@ -190,6 +200,8 @@ dns_find_resource(char *name, struct resource_record **r)
 {
         struct resource_record *catchall = NULL;
 
+        *r = NULL;
+
         /* Search in each records name for the given name  */
         for(int i = 0; i < dns_record_count; ++i) {
                 if( dns_records[i].catchall )
@@ -202,6 +214,11 @@ dns_find_resource(char *name, struct resource_record **r)
         }
 
         if( catchall ) {
+                /* Copy desired resource name */
+                catchall->namelen = os_strlen(name)+1; // Include \0
+                os_strncpy(catchall->name, name, catchall->namelen < MAX_NAME_LEN
+                           ? catchall->namelen : MAX_NAME_LEN);
+
                 *r = catchall;
         }
 }
@@ -300,6 +317,24 @@ dns_write_answers()
         }
 }
 
+
+void ICACHE_FLASH_ATTR
+dns_find_answers()
+{
+        bool ret;
+        uint16 count = qdcount > MAX_QUESTIONS ? MAX_QUESTIONS : qdcount;
+
+        ancount = 0;
+
+        for(int i = 0; i < qdcount; ++i) {
+                dns_find_resource(questions[i].name, &answer_records[ancount]);
+                /* increase answer count if found */
+                if(answer_records[ancount]) {
+                        ancount += 1;
+                }
+        }
+}
+
 /**
  * Generate response and point buf to it
  * @param buf will point to the packet buffer
@@ -346,8 +381,8 @@ dns_write_response(uint8 **buf, uint16 *len)
         /* Counter */
         head[0] = 0;               // qdcount
         head[1] = 0;               // qdcount
-        head[3] =  qdcount & 0xFF; // ancount ( answer for each question )
-        head[2] |= qdcount << 8;   // ancount
+        head[3] =  ancount & 0xFF; // ancount ( answer for each question )
+        head[2] |= ancount << 8;   // ancount
         head[4] = 0;               // nscount
         head[5] = 0;               // nscount
         head[6] = 0;               // arcount

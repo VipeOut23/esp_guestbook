@@ -32,6 +32,7 @@ extern uint16 dns_record_count;
 bool ICACHE_FLASH_ATTR dns_parse(char *data, uint16 len);
 void ICACHE_FLASH_ATTR dns_dump();
 char* ICACHE_FLASH_ATTR dns_errstr();
+void ICACHE_FLASH_ATTR dns_find_answers();
 bool ICACHE_FLASH_ATTR dns_write_response(uint8 **buf, uint16 *len);
 
 #endif // __DNS_H

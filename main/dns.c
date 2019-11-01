@@ -159,6 +159,7 @@ dns_parse_questions(char *data, uint16 len)
         uint16 count;
         uint8  q_idx = 0;
         char   *ret;
+        uint16 aligned;
 
         count = qdcount > MAX_QUESTIONS ? MAX_QUESTIONS : qdcount;
 
@@ -172,11 +173,13 @@ dns_parse_questions(char *data, uint16 len)
 
                 if(len < 4)
                 { dns_error = DNSE_PACKET_TOO_SMALL ; return true; }
-                //questions[q_idx].type  = ntohs( *((uint16*)data)   );
-                //questions[q_idx].class = ntohs( *((uint16*)data+2) );
-                questions[q_idx].type  = ntohs( data[0] );
-                questions[q_idx].class = ntohs( data[3] );
-                data += 4;
+                aligned = *data++;
+                aligned |= (*data++) << 8;
+                questions[q_idx].type  = ntohs( aligned );
+                aligned = *data++;
+                aligned |= (*data++) << 8;
+                questions[q_idx].class = ntohs( aligned );
+                len  -= 4;
 
                 q_idx++;
         }
@@ -229,7 +232,7 @@ dns_parse(char *data, uint16 len)
         header[0] = *dptr++;
         header[1] = *dptr++;
 
-        /* Read counts */
+        /* Read counts (data is already aligned) */
         qdcount = ntohs( *((uint16*)dptr)   );
         ancount = ntohs( *((uint16*)dptr+2) );
         nscount = ntohs( *((uint16*)dptr+4) );

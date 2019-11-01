@@ -8,6 +8,10 @@
 #include "config.h"
 #include "dns.h"
 
+#ifdef ENABLE_GDB
+#include "../esp-gdbstub/gdbstub.h"
+#endif
+
 #define MESSAGE_QUEUE_LEN 1
 os_event_t message_queue[MESSAGE_QUEUE_LEN];
 
@@ -96,6 +100,9 @@ user_init()
 
         uart_init(BIT_RATE_115200, BIT_RATE_115200);
 
+#ifdef ENABLE_GDB
+        gdbstub_init();
+#endif
 
         /* Configure access point */
         ap_conf.channel         = AP_CHANNEL;

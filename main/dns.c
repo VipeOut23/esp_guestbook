@@ -124,10 +124,11 @@ dns_parse_labels(char *data, uint16 len, struct question *q)
 
         q->n_label = 0;
 
-        if(len < 1)
-        { dns_error = DNSE_PACKET_TOO_SMALL; return NULL; }
 
         for(;;) {
+                if(len < 1)
+                { dns_error = DNSE_PACKET_TOO_SMALL; return NULL; }
+
                 /* Read and check label len */
                 cur_len = *data++;
                 q->name[n_idx++] = cur_len;
@@ -136,6 +137,7 @@ dns_parse_labels(char *data, uint16 len, struct question *q)
                 if(cur_len+n_idx > MAX_NAME_LEN)
                 { dns_error = DNSE_NAME_LEN_OVERFLOW;  return NULL; }
                 if(cur_len == 0) return data;
+                len -= cur_len+1;
 
                 /* Read label */
                 q->labels[l_idx++] = q->name+n_idx;

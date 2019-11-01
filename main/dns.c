@@ -44,6 +44,70 @@ struct resource_record *dns_records;
 uint16 dns_record_count;
 
 
+void ICACHE_FLASH_ATTR
+dns_dump()
+{
+        os_printf("STATUS: %s\n", dns_errstr());
+        os_printf("ID:      %02X:%02X\n", id[0], id[1]);
+        os_printf("QDCOUNT: %d\n", qdcount);
+        os_printf("ANCOUNT: %d\n", ancount);
+        os_printf("NSCOUNT: %d\n", nscount);
+        os_printf("ARCOUNT: %d\n", arcount);
+        os_printf("----Questions----\n");
+
+        for(int i = 0; i < qdcount; ++i) {
+                for(int l = 0; l < questions[i].n_label; ++l) {
+                        os_printf("  %s\n", questions[i].labels[l]);
+                }
+                os_printf("    TYPE:  %d\n", questions[i].type);
+                os_printf("    CLASS: %d\n", questions[i].class);
+        }
+
+        os_printf("-----------------\n");
+}
+
+/**
+ * Return a string describing dns_error
+ */
+char* ICACHE_FLASH_ATTR
+dns_errstr()
+{
+        switch(dns_error) {
+        case DNSE_OK:
+                return "OK";
+        case DNSE_ERROR:
+                return "ERROR";
+        case DNSE_PACKET_TOO_SMALL:
+                return "packet too small, to proceed parsing";
+        case DNSE_LABEL_LEN_OVERFLOW:
+                return "length of label is too long";
+        case DNSE_NAME_LEN_OVERFLOW:
+                return "length of name is too long";
+        case DNSE_UNIMPLEMENTED:
+                return "requested feature, but it's not implemented";
+        case DNSE_RESP_BUF_FULL:
+                return "response buffer is full";
+        }
+}
+
+
+bool ICACHE_FLASH_ATTR
+dns_check_header()
+{
+        bool ret = false;
+
+        if( IS_TRUNC || IS_NOTIFY || IS_STATUS || IS_UPDATE ) {
+                dns_error = DNSE_UNIMPLEMENTED;
+                ret = true;
+        }
+        if( IS_REPLY ) {
+                dns_error = DNSE_ERROR;
+                ret = true;
+        }
+
+        return ret;
+}
+
 /**
  * Parse all labels starting at data and write to question
  * @param data data to start reading from
@@ -116,66 +180,6 @@ dns_parse_questions(char *data, uint16 len)
         }
 }
 
-bool ICACHE_FLASH_ATTR
-dns_check_header()
-{
-        bool ret = false;
-
-        if( IS_TRUNC || IS_NOTIFY || IS_STATUS || IS_UPDATE ) {
-                dns_error = DNSE_UNIMPLEMENTED;
-                ret = true;
-        }
-        if( IS_REPLY ) {
-                dns_error = DNSE_ERROR;
-                ret = true;
-        }
-
-        return ret;
-}
-
-void ICACHE_FLASH_ATTR
-dns_dump()
-{
-        os_printf("STATUS: %s\n", dns_errstr());
-        os_printf("ID:      %02X:%02X\n", id[0], id[1]);
-        os_printf("QDCOUNT: %d\n", qdcount);
-        os_printf("ANCOUNT: %d\n", ancount);
-        os_printf("NSCOUNT: %d\n", nscount);
-        os_printf("ARCOUNT: %d\n", arcount);
-        os_printf("----Questions----\n");
-
-        for(int i = 0; i < qdcount; ++i) {
-                for(int l = 0; l < questions[i].n_label; ++l) {
-                        os_printf("  %s\n", questions[i].labels[l]);
-                }
-                os_printf("    TYPE:  %d\n", questions[i].type);
-                os_printf("    CLASS: %d\n", questions[i].class);
-        }
-
-        os_printf("-----------------\n");
-}
-
-char* ICACHE_FLASH_ATTR
-dns_errstr()
-{
-        switch(dns_error) {
-        case DNSE_OK:
-                return "OK";
-        case DNSE_ERROR:
-                return "ERROR";
-        case DNSE_PACKET_TOO_SMALL:
-                return "packet too small, to proceed parsing";
-        case DNSE_LABEL_LEN_OVERFLOW:
-                return "length of label is too long";
-        case DNSE_NAME_LEN_OVERFLOW:
-                return "length of name is too long";
-        case DNSE_UNIMPLEMENTED:
-                return "requested feature, but it's not implemented";
-        case DNSE_RESP_BUF_FULL:
-                return "response buffer is full";
-        }
-}
-
 void ICACHE_FLASH_ATTR
 dns_find_resource(char *name, struct resource_record **r)
 {
@@ -238,6 +242,10 @@ dns_parse(char *data, uint16 len)
         return err;
 }
 
+/**
+ * Generates answers in answers[]
+ * for each question in questions[]
+ */
 static bool ICACHE_FLASH_ATTR
 dns_write_answers()
 {
@@ -278,6 +286,12 @@ dns_write_answers()
         }
 }
 
+/**
+ * Generate response and point buf to it
+ * @param buf will point to the packet buffer
+ * @param len will be the lengh of the packet buffer
+ * @return true = error ; false = success
+ */
 bool ICACHE_FLASH_ATTR
 dns_write_response(uint8 **buf, uint16 *len)
 {
@@ -348,5 +362,5 @@ dns_write_response(uint8 **buf, uint16 *len)
 
         //TODO: Return code for one or multiple names not found
 
-        return false;;
+        return false;
 }

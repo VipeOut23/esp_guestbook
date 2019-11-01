@@ -254,6 +254,8 @@ dns_parse(char *data, uint16 len)
 static bool ICACHE_FLASH_ATTR
 dns_write_answers()
 {
+        uint16 aligned;
+        uint32 aligned32;
         uint8 *head = dns_resp_buf+written;
 
         for(int i = 0; i < qdcount; ++i) {
@@ -269,18 +271,25 @@ dns_write_answers()
                 if(written+12 > MAX_RESPONSE_SIZE)
                 { dns_error = DNSE_RESP_BUF_FULL; return true; }
 
-                /* Copy type and class */
-                *((uint16*)head)   = htons( answer_records[i]->type );
-                *((uint16*)head+2) = htons( answer_records[i]->class );
+                /* Copy type and class (aligned) */
+                aligned = htons( answer_records[i]->type );
+                head[0] = aligned & 0xFF; head[1] = aligned >> 8;
+                aligned = htons( answer_records[i]->class );
+                head[2] = aligned & 0xFF; head[3] = aligned >> 8;
 
                 /* 0 TTL (only vaild for this request) */
                 head[4] = 0; head[5] = 0; head[6] = 0; head[7] = 0;
 
-                /* rdlength */
-                *((uint32*)head+8) = htonl( answer_records[i]->rdlength );
+                /* rdlength (aligned) */
+                aligned32 = htonl( answer_records[i]->rdlength );
+                head[8]   = aligned32 & 0xFF;         head[9]  = (aligned32 >> 8) & 0xFF;
+                head[10]  = (aligned32 >> 16) & 0xFF; head[11] = aligned32 >> 24;
 
                 written += 12;
                 head    += 12;
+
+                if(written+answer_records[i]->rdlength > MAX_RESPONSE_SIZE)
+                { dns_error = DNSE_RESP_BUF_FULL; return true; }
 
                 /* rdata */
                 os_memcpy(head, answer_records[i]->rdata, answer_records[i]->rdlength);

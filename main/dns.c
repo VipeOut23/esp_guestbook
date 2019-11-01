@@ -78,7 +78,7 @@ dns_errstr()
         case DNSE_ERROR:
                 return "ERROR";
         case DNSE_PACKET_TOO_SMALL:
-                return "packet too small, to proceed parsing";
+                return "packet too small to proceed parsing";
         case DNSE_LABEL_LEN_OVERFLOW:
                 return "length of label is too long";
         case DNSE_NAME_LEN_OVERFLOW:

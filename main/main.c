@@ -15,6 +15,9 @@
 #define MESSAGE_QUEUE_LEN 1
 os_event_t message_queue[MESSAGE_QUEUE_LEN];
 
+static esp_udp dns_udp;
+static struct espconn dns_conn;
+static struct resource_record catchall[1];
 
 /**
  * Main code function
@@ -52,12 +55,31 @@ user_spi_flash_dio_to_qio_pre_init(void)
 void ICACHE_FLASH_ATTR
 user_dns_rcv(void *arg, char *pdata, uint16 len)
 {
-        dns_parse(pdata, len);
-        dns_dump();
-}
+        bool err;
+        uint8 *answer;
+        uint16 anlen;
+        remot_info *remote;
+        struct espconn *peer = arg;
 
-static esp_udp dns_udp;
-static struct espconn dns_conn;
+
+        dns_parse(pdata, len);
+        dns_find_answers();
+        dns_dump();
+        err = dns_write_response(&answer, &anlen);
+        if(err) {
+                os_printf("ERROR: %s\n", dns_errstr());
+                return;
+        }
+
+        if( espconn_get_connection_info(peer, &remote, 0) == ESPCONN_OK ) {
+             peer->proto.udp->remote_port  = remote->remote_port;
+             peer->proto.udp->remote_ip[0] = remote->remote_ip[0];
+             peer->proto.udp->remote_ip[1] = remote->remote_ip[1];
+             peer->proto.udp->remote_ip[2] = remote->remote_ip[2];
+             peer->proto.udp->remote_ip[3] = remote->remote_ip[3];
+             espconn_sent(peer, answer, anlen);
+        }
+}
 
 void ICACHE_FLASH_ATTR
 user_dns_init()
@@ -72,6 +94,18 @@ user_dns_init()
         dns_conn.proto.udp = &dns_udp;
         dns_conn.type = ESPCONN_UDP;
         dns_conn.recv_callback = user_dns_rcv;
+
+        catchall[0].catchall = true;
+        catchall[0].ttl      = 1;
+        catchall[0].type     = 1;
+        catchall[0].class    = 1;
+        catchall[0].rdata[0] = 10;
+        catchall[0].rdata[1] = 10;
+        catchall[0].rdata[2] = 10;
+        catchall[0].rdata[3] = 1;
+        catchall[0].rdlength = 4;
+        dns_records = catchall;
+        dns_record_count = 1;
 
         ret = espconn_create(&dns_conn);
         switch(ret) {

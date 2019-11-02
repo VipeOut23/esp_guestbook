@@ -272,6 +272,7 @@ static bool ICACHE_FLASH_ATTR
 dns_write_answers()
 {
         uint16 aligned;
+        uint32 aligned32;
         uint8 *head = dns_resp_buf+written;
 
         for(int i = 0; i < qdcount; ++i) {
@@ -293,8 +294,10 @@ dns_write_answers()
                 aligned = htons( answer_records[i]->class );
                 head[2] = aligned & 0xFF; head[3] = aligned >> 8;
 
-                /* 0 TTL (only vaild for this request) */
-                head[4] = 0; head[5] = 0; head[6] = 0; head[7] = 0;
+                /* Copy ttl (aligned) */
+                aligned32 = htonl( answer_records[i]->ttl );
+                head[4] = aligned32 & 0xFF;         head[5] = (aligned32 >> 8) & 0xFF;
+                head[6] = (aligned32 >> 16) & 0xFF; head[7] = aligned32 >> 24;
 
                 /* rdlength (aligned) */
                 aligned = htons( answer_records[i]->rdlength );

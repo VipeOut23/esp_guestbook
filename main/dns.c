@@ -19,7 +19,7 @@
 #define IS_UPDATE            ((header[0] & 0b00011110) == 0b1010)
 /* Flags */
 #define IS_TRUNC             ((header[0] & 0b01000000))
-#define SET_QR(header, val)  (header[0] |= (val & 0b000000001))
+#define SET_QR(header, val)  (header[0] = (header[0] & 0b11111110) | (val & 0b000000001))
 /* Rcode */
 #define SET_RCODE(header,val) header[1] &= 0b11110000; header[1] |= (val<<4)
 
@@ -272,7 +272,6 @@ static bool ICACHE_FLASH_ATTR
 dns_write_answers()
 {
         uint16 aligned;
-        uint32 aligned32;
         uint8 *head = dns_resp_buf+written;
 
         for(int i = 0; i < qdcount; ++i) {
@@ -298,12 +297,11 @@ dns_write_answers()
                 head[4] = 0; head[5] = 0; head[6] = 0; head[7] = 0;
 
                 /* rdlength (aligned) */
-                aligned32 = htonl( answer_records[i]->rdlength );
-                head[8]   = aligned32 & 0xFF;         head[9]  = (aligned32 >> 8) & 0xFF;
-                head[10]  = (aligned32 >> 16) & 0xFF; head[11] = aligned32 >> 24;
+                aligned = htons( answer_records[i]->rdlength );
+                head[8] = aligned & 0xFF; head[9]  = aligned >> 8;
 
-                written += 12;
-                head    += 12;
+                written += 10;
+                head    += 10;
 
                 if(written+answer_records[i]->rdlength > MAX_RESPONSE_SIZE)
                 { dns_error = DNSE_RESP_BUF_FULL; return true; }
@@ -315,6 +313,8 @@ dns_write_answers()
                 head    += answer_records[i]->rdlength;
 
         }
+
+        return false;
 }
 
 

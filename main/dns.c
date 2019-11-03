@@ -381,7 +381,6 @@ dns_write_response(uint8 **buf, uint16 *len)
         default:
                 SET_RCODE(head, RC_ServFail); break;
         }
-        os_printf("STATUS: %s\n", dns_errstr());
         head += 2;
 
         /* Counter */

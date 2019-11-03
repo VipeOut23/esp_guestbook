@@ -12,16 +12,17 @@
 #include "lwip/def.h"
 
 /* OpCodes */
-#define IS_REPLY             !(header[0] & 0b00000001)
-#define IS_QUERY             ((header[0] & 0b00011110) == 0b10)
-#define IS_STATUS            ((header[0] & 0b00011110) == 0b100)
-#define IS_NOTIFY            ((header[0] & 0b00011110) == 0b1000)
-#define IS_UPDATE            ((header[0] & 0b00011110) == 0b1010)
+#define IS_STD_QUERY         ((header[0] & 0b01111000) == 0b1000)
+#define IS_STATUS            ((header[0] & 0b01111000) == 0b10000)
+#define IS_NOTIFY            ((header[0] & 0b01111000) == 0b100000)
+#define IS_UPDATE            ((header[0] & 0b01111000) == 0b101000)
 /* Flags */
-#define IS_TRUNC             ((header[0] & 0b01000000))
-#define SET_QR(header, val)  (header[0] = (header[0] & 0b11111110) | (val & 0b000000001))
+#define IS_RESPONSE          (header[0] >> 7)
+#define IS_TRUNC             ((header[0] & 0b00000010))
+#define SET_QR(header, val)  (header[0] = (header[0] & 0b01111111) | ((val<<7) & 0b10000000))
+#define SET_AA(header, val)  (header[0] = (header[0] & 0b11111011) | ((val<<2) & 0b00000100))
 /* Rcode */
-#define SET_RCODE(header,val) header[1] &= 0b11110000; header[1] |= (val<<4)
+#define SET_RCODE(header,val) header[1] &= 0b11110000; header[1] |= (val & 0b00001111)
 
 
 
@@ -110,7 +111,7 @@ dns_check_header()
                 dns_error = DNSE_UNIMPLEMENTED;
                 ret = true;
         }
-        if( IS_REPLY ) {
+        if( IS_RESPONSE ) {
                 dns_error = DNSE_ERROR;
                 ret = true;
         }
@@ -361,6 +362,7 @@ dns_write_response(uint8 **buf, uint16 *len)
         /* Write header */
         head[0] = head[1] = 0;
         SET_QR(head, 1);
+        SET_AA(head, 1);
 
         /* Response code */
         switch(dns_error) {
@@ -379,6 +381,7 @@ dns_write_response(uint8 **buf, uint16 *len)
         default:
                 SET_RCODE(head, RC_ServFail); break;
         }
+        os_printf("STATUS: %s\n", dns_errstr());
         head += 2;
 
         /* Counter */

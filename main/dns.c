@@ -12,10 +12,11 @@
 #include "lwip/def.h"
 
 /* OpCodes */
-#define IS_STD_QUERY         ((header[0] & 0b01111000) == 0b1000)
-#define IS_STATUS            ((header[0] & 0b01111000) == 0b10000)
-#define IS_NOTIFY            ((header[0] & 0b01111000) == 0b100000)
-#define IS_UPDATE            ((header[0] & 0b01111000) == 0b101000)
+#define IS_STD_QUERY           ((header[0] & 0b01111000) == 0b1000)
+#define IS_STATUS              ((header[0] & 0b01111000) == 0b10000)
+#define IS_NOTIFY              ((header[0] & 0b01111000) == 0b100000)
+#define IS_UPDATE              ((header[0] & 0b01111000) == 0b101000)
+#define SET_OPCODE(header,val) (header[0] = (header[0] & 0b10000111) | ((val<<3) & 0b01111000))
 /* Flags */
 #define IS_RESPONSE          (header[0] >> 7)
 #define IS_TRUNC             ((header[0] & 0b00000010))
@@ -363,6 +364,9 @@ dns_write_response(uint8 **buf, uint16 *len)
         head[0] = head[1] = 0;
         SET_QR(head, 1);
         SET_AA(head, 1);
+
+        /* Set OpCode to update */
+        SET_OPCODE(head, 0);
 
         /* Response code */
         switch(dns_error) {

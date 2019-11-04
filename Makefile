@@ -38,12 +38,19 @@ TARGET		= app
 # which modules (subdirectories) of the project to include in compiling
 MODULES		= driver main
 EXTRA_INCDIR    = include
+ifeq ("$(DEBUG)","1")
+MODULES += esp-gdbstub
+endif
 
 # libraries used in this project, mainly provided by the SDK
 LIBS		= c gcc hal pp phy net80211 lwip wpa main crypto driver
 
 # compiler flags using during compilation of source files
 CFLAGS		= -Os -g -O2 -Wpointer-arith --std=c99 -Wundef -Werror -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals  -D__ets__ -DICACHE_FLASH -DSPI_FLASH_SIZE_MAP=$(SPI_FLASH_SIZE_MAP)
+ifeq ("$(DEBUG)","1")
+CFLAGS		= -Os -Wpointer-arith --std=c99 -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals  -D__ets__ -DICACHE_FLASH -DSPI_FLASH_SIZE_MAP=$(SPI_FLASH_SIZE_MAP)
+CFLAGS      += -DENABLE_GDB
+endif
 
 # linker flags used to generate the main object file
 LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static
@@ -79,8 +86,12 @@ BUILD_DIR	:= $(addprefix $(BUILD_BASE)/,$(MODULES))
 SDK_LIBDIR	:= $(addprefix $(SDK_BASE)/,$(SDK_LIBDIR))
 SDK_INCDIR	:= $(addprefix -I$(SDK_BASE)/,$(SDK_INCDIR))
 
-SRC		:= $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.c))
-OBJ		:= $(patsubst %.c,$(BUILD_BASE)/%.o,$(SRC))
+SRCC		:= $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.c))
+OBJ			:= $(patsubst %.c,$(BUILD_BASE)/%.o,$(SRCC))
+ifeq ("$(DEBUG)","1")
+SRCS		:= $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.S))
+OBJ			+= $(patsubst %.S,$(BUILD_BASE)/%.o,$(SRCS))
+endif
 LIBS		:= $(addprefix -l,$(LIBS))
 APP_AR		:= $(addprefix $(BUILD_BASE)/,$(TARGET)_app.a)
 TARGET_OUT	:= $(addprefix $(BUILD_BASE)/,$(TARGET).out)
@@ -104,9 +115,13 @@ vecho := @echo
 endif
 
 vpath %.c $(SRC_DIR)
+vpath %.S $(SRC_DIR)
 
 define compile-objects
 $1/%.o: %.c
+	$(vecho) "CC $$<"
+	$(Q) $(CC) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CFLAGS) -c $$< -o $$@
+$1/%.o: %.S
 	$(vecho) "CC $$<"
 	$(Q) $(CC) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CFLAGS) -c $$< -o $$@
 endef
